@@ -15,7 +15,7 @@ app.post('/api/flight/:flightId/schedule/:scheduleId', isAdmin, addSchedule); //
 app.delete('/api/flight/schedule/:scheduleId', isAdmin, deleteSchedule); // ADMIN
 
 function isAdmin(req, res, next) {
-    if(req.isAuthenticated() && req.user.roles.indexOf('ADMIN') > -1) {
+    if(req.isAuthenticated() && req.user.role === 'ADMIN') {
         next(); // continue to next middleware;
     } else {
         res.sendStatus(401);

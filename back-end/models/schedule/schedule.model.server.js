@@ -1,8 +1,8 @@
-var mongoose = require('mongoose');
-var scheduleSchema = require('./schedule.schema.server');
-var scheduleModel = mongoose.model('ScheduleModel', scheduleSchema);
-var userModel = require('../user/user.model.server');
-var flightModel = require('../flight/flight.model.server');
+const mongoose = require('mongoose');
+const scheduleSchema = require('./schedule.schema.server');
+const scheduleModel = mongoose.model('ScheduleModel', scheduleSchema);
+const userModel = require('../user/user.model.server');
+const flightModel = require('../flight/flight.model.server');
 
 scheduleModel.createSchedule = createSchedule;
 scheduleModel.findScheduleById = findScheduleById;
@@ -12,6 +12,9 @@ scheduleModel.updateSchedule = updateSchedule;
 scheduleModel.deleteSchedule = deleteSchedule;
 scheduleModel.addFlight = addFlight;
 scheduleModel.deleteFlight = deleteFlight;
+scheduleModel.createScheduleOnly = createScheduleOnly;
+scheduleModel.findSchedulesByCrew = findSchedulesByCrew;
+scheduleModel.findSchedulesByChecker = findSchedulesByChecker;
 
 module.exports = scheduleModel;
 
@@ -22,6 +25,25 @@ function createSchedule(userId, flightId, schedule) {
             flightModel.addSchedule(flightId, schedule._id);
             return schedule;
         });
+}
+
+function findSchedulesByCrew(id){
+
+    return scheduleModel.find({
+        crews: id
+    }).populate('flight')
+
+}
+
+function findSchedulesByChecker(id){
+    console.log("id",id);
+    return scheduleModel.find({
+        ticket_checkers: id
+    }).populate('flight')
+}
+
+function createScheduleOnly(schedule){
+    return scheduleModel.create(schedule);
 }
 
 function findScheduleById(scheduleId) {
@@ -35,7 +57,11 @@ function findAllSchedulesForUser(userId) {
 }
 
 function findAllSchedules() {
-    return scheduleModel.find();
+    return scheduleModel.find()
+        .populate('flight', "departure_scheduled_time departure_terminal departure_gate marketing_carrier marketing_flight_number")
+        .populate('crews', "first_name last_name username phone email")
+        .populate('ticket_checkers', "first_name last_name username phone email")
+
 }
 
 function updateSchedule(scheduleId, newSchedule) {

@@ -1,7 +1,7 @@
-var mongoose = require('mongoose');
+const mongoose = require('mongoose');
 
-var flightSchema = mongoose.Schema({
-    bookings: [{type: mongoose.Schema.ObjectId, ref: "BookingModel"}],
+const flightSchema = mongoose.Schema({
+    tickets: [{type: mongoose.Schema.ObjectId, ref: "TicketModel"}],
     schedules: [{type: mongoose.Schema.ObjectId, ref: "ScheduleModel"}],
     departure_airport: String,
     departure_scheduled_time: {type: Date, default: Date.now},
@@ -22,8 +22,8 @@ var flightSchema = mongoose.Schema({
     equipment: String,
     journey_duration: String,
     flight_status: String,
-    dateCreated: {type: Date, default: Date.now},
-    dateUpdated: {type: Date, default: Date.now}
-}, {collection: "flight"});
+    date_created: {type: Date, default: Date.now},
+    date_updated: {type: Date, default: Date.now}
+}, {collection: "flights"});
 
 module.exports = flightSchema;

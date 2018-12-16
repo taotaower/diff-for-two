@@ -1,32 +1,38 @@
-var mongoose = require('mongoose');
-var userSchema = require('./user.schema.server');
-var userModel = mongoose.model('UserModel', userSchema);
+const mongoose = require('mongoose');
+const userSchema = require('./user.schema.server');
+const userModel = mongoose.model('UserModel', userSchema);
 
+// create user
 userModel.createUser = createUser;
-userModel.findUserById = findUserById;
+
+// find all user
 userModel.findAllUsers = findAllUsers;
-userModel.findAllCrew = findAllCrew;
+userModel.findAllSpecificUser = findAllSpecificUser;
+
+
 userModel.findUserByUsername = findUserByUsername;
+userModel.findUserById = findUserById;
 userModel.findUserByCredentials = findUserByCredentials;
-userModel.findUserByFacebookId = findUserByFacebookId;
-userModel.findUserByGoogleId = findUserByGoogleId;
+userModel.findUsersByIds = findUsersByIds;
+userModel.findAllCrew = findAllCrew;
+userModel.findAllTicketChecker = findAllTicketChecker;
+userModel.findAllRepresnt = findAllRepresnt;
+
 userModel.updateUser = updateUser;
 userModel.deleteUser = deleteUser;
 userModel.addMessage = addMessage;
-userModel.deleteMessage = deleteMessage;
 userModel.addBooking = addBooking;
 userModel.deleteBooking = deleteBooking;
 userModel.addSchedule = addSchedule;
 userModel.deleteSchedule = deleteSchedule;
+userModel.findAllPassenger = findAllPassenger;
+userModel.checkinPassenger = checkinPassenger;
+
 
 module.exports = userModel;
 
+
 function createUser(user) {
-    if (user.roles) {
-        user.roles = user.roles.split(',');
-    } else {
-        user.roles = ['PASSENGER'];
-    }
     return userModel.create(user);
 }
 
@@ -35,43 +41,52 @@ function findUserById(userId) {
 }
 
 function findAllUsers() {
-    return userModel.find();
+    return userModel.find({ role: { $ne: "PASSENGER" } } );
 }
 
-function findAllCrew() {
-    return userModel.find({roles:'CREW'});
+function findAllSpecificUser(role) {
+    return userModel.find({role:role});
 }
 
-function findUserByUsername(username) {
-    return userModel.findOne({username: username});
+
+function findAllCrew(){
+    return userModel.find({role:"STAFF", duty:"CREW"});
+}
+
+function findAllTicketChecker(){
+    return userModel.find({role:"STAFF", duty:"TICKET_CHECKER"});
+}
+
+function findAllRepresnt(){
+    userModel.find({role:"STAFF", duty:"REPRESENTATIVE"});
+}
+
+
+
+function findUserByUsername(username){
+    console.log(username);
+    return userModel.find({username:username});
 }
 
 function findUserByCredentials(username, password) {
+
     return userModel.findOne({
-        username: username
-        // password: password
+        username: username,
+        password: password
     });
 }
 
-function findUserByFacebookId(facebookId) {
-    return userModel
-        .findOne({'facebook.id': facebookId});
-}
-
-function findUserByGoogleId(googleId) {
-    return userModel
-        .findOne({'google.id': googleId});
+function findUsersByIds(ids){
+    return userModel.find({
+    _id: {$in:ids}
+    });
 }
 
 function updateUser(userId, newUser) {
     // if you don't allow to update certain fields,
     // delete the corresponding fields.
-    delete newUser.username;
-    delete newUser.password;
-    if (typeof newUser.roles === 'string') {
-        newUser.roles = newUser.roles.split(',');
-    }
     return userModel.update({_id: userId}, {$set: newUser});
+
 }
 
 function deleteUser(userId) {
@@ -87,20 +102,6 @@ function addMessage(username, messageId) {
         });
 }
 
-function deleteMessage(messageId) {
-    return userModel
-        .find({messages:messageId})
-        .then(function (users) {
-            var user1 = users[0];
-            var user2= users[1];
-            var index1 = user1.messages.indexOf(messageId);
-            user1.messages.splice(index1, 1);
-            var index2 = user2.messages.indexOf(messageId);
-            user2.messages.splice(index2, 1);
-            user1.save();
-            user2.save();
-        });
-}
 
 function addBooking(userId, bookingId) {
     return userModel
@@ -140,4 +141,15 @@ function deleteSchedule(scheduleId){
             user.schedules.splice(index, 1);
             return user.save();
         });
+}
+
+function findAllPassenger(ids){
+    return userModel
+        .find({
+            $and : [{_id: {$in:ids}}, {check_in: false}]
+        })
+}
+
+function checkinPassenger(id){
+    return userModel.update({_id: id}, {$set: {check_in: true}});
 }

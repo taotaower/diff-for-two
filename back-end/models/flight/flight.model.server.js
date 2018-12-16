@@ -1,6 +1,7 @@
-var mongoose = require('mongoose');
-var flightSchema = require('./flight.schema.server');
-var flightModel = mongoose.model('FlightModel', flightSchema);
+const mongoose = require('mongoose');
+let flightSchema = require('./flight.schema.server');
+let flightModel = mongoose.model('FlightModel', flightSchema);
+let bookingModel = require('../reservation/reservation.model.server');
 
 flightModel.createFlight = createFlight;
 flightModel.createFlightOnly = createFlightOnly;
@@ -20,18 +21,13 @@ module.exports = flightModel;
 
 function createFlight(bookingId, flight) { // A certain Flight will be created for once ONLY.
     return flightModel.create(flight)
-        .then(function (flight) {
-            var bookingModel = require('../booking/booking.model.server');
-            bookingModel.addFlight(bookingId, flight._id); // add reference of flight to booking
-            return flight;
+        .then(function (flight) {// add reference of flight to booking
+            return bookingModel.addFlight(bookingId, flight._id);
         });
 }
 
 function createFlightOnly(flight){
     return flightModel.create(flight)
-        .then(function (flight) {
-            return flight;
-        });
 }
 
 function findFlightById(flightId) {

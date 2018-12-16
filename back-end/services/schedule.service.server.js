@@ -1,30 +1,56 @@
 var app = require('../../express');
 var scheduleModel = require('../models/schedule/schedule.model.server');
 
-app.post('/api/schedule/:userId/:flightId', isAdmin, createSchedule);
+app.post('/api/schedule/createSchedule', isAdmin, createSchedule);
 app.get('/api/user/:userId/schedule', findAllSchedulesForUser);
 app.get('/api/schedule/:scheduleId', findScheduleById);
 app.get('/api/schedules', isAdmin, findAllSchedules);
 app.put('/api/schedule/:scheduleId', isAdmin, updateSchedule);
 app.delete('/api/schedule/:scheduleId', isAdmin, deleteSchedule);
-app.post('/api/schedule/:scheduleId/:flightId', isAdmin, addFlight);
+app.post('/api/schedule/:scheduleId/:flightId', isAdmin, addFlightIntoSchedule);
 app.delete('/api/schedule/:flightId', isAdmin, deleteFlight);
+app.get('/api/schedules/checker/:id', checkerSchedules);
+app.get('/api/schedules/crew/:id', crewSchedules);
 
 
 function isAdmin(req, res, next) {
-    if(req.isAuthenticated() && req.user.roles.indexOf('ADMIN') > -1) {
+    if(req.isAuthenticated() && req.user.role === 'ADMIN') {
         next(); // continue to next middleware;
     } else {
         res.sendStatus(401);
     }
 }
 
-function createSchedule(req, res) {
-    var schedule = req.body;
-    var userId = req.params.userId;
-    var flightId = req.params.flightId;
+function checkerSchedules(req, res){
+    let id = req.params.id;
     scheduleModel
-        .createSchedule(userId, flightId, schedule)
+        .findSchedulesByChecker(id)
+        .then(
+            function (schedules) {
+                res.json(schedules);
+            }, function (err) {
+                res.send(err);
+            }
+        )
+}
+function crewSchedules(req, res){
+    let id = req.params.id;
+    scheduleModel
+        .findSchedulesByCrew(id)
+        .then(
+            function (schedules) {
+                res.json(schedules);
+            }, function (err) {
+                res.send(err);
+            }
+        )
+}
+
+function createSchedule(req, res) {
+    console.log("sadadasdasdas");
+    let schedule = req.body;
+    scheduleModel
+        .createScheduleOnly(schedule)
         .then(function (schedule) {
             res.json(schedule);
         }, function (err) {
@@ -86,12 +112,12 @@ function deleteSchedule(req, res) {
         });
 }
 
-function addFlight(req, res) {
+function addFlightIntoSchedule(req, res) {
     var scheduleId = req.params.scheduleId;
     var flightId = req.params.flightId;
 
     scheduleModel
-        .addFlight(scheduleId, flightId)
+        .addFlightIntoSchedule(scheduleId, flightId)
         .then(function (schedule) {
             res.json(schedule);
         }, function (err) {

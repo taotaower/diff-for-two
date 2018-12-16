@@ -1,29 +1,46 @@
 var app = require('../../express');
-var bookingModel = require('../models/booking/booking.model.server');
+var bookingModel = require('../models/reservation/reservation.model.server');
 
-app.post('/api/user/:userId/booking', createBooking);
+app.post('/api/user/booking', createBooking);
 app.get('/api/user/:userId/booking', findAllBookingsForUser);
 app.get('/api/booking/:bookingId', findBookingById);
 app.get('/api/bookings', isAdmin, findAllBookings);
 app.put('/api/booking/:bookingId', updateBooking);
 app.delete('/api/booking/:bookingId', deleteBooking);
-app.post('/api/booking/:bookingId/:flightId', addFlight);
+app.post('/api/booking/addFlight/update', addFlight);
 app.delete('/api/booking/:flightId', deleteFlight);
+
+app.post('/api/booking/flight/reservations', findBookingsByFlightWithPass);
 
 
 function isAdmin(req, res, next) {
-    if(req.isAuthenticated() && req.user.roles.indexOf('ADMIN') > -1) {
+    if(req.isAuthenticated() && req.user.role ==='ADMIN') {
         next(); // continue to next middleware;
     } else {
         res.sendStatus(401);
     }
 }
 
+function findBookingsByFlightWithPass(req, res){
+    let flight = req.body.flight;
+    bookingModel
+        .findBookingsByFlightWithPass(flight)
+        .then(
+            bookings => {
+                res.json(bookings);
+            },
+            err => {
+                res.send(err);
+            }
+
+        )
+}
+
 function createBooking(req, res) {
     var booking = req.body;
-    var userId = req.params.userId;
+    // var userId = req.params.userId;
     bookingModel
-        .createBooking(userId, booking)
+        .createReservation(booking)
         .then(function (booking) {
             res.json(booking);
         }, function (err) {
@@ -34,7 +51,7 @@ function createBooking(req, res) {
 function findAllBookingsForUser(req, res) {
     var userId = req.params.userId;
     bookingModel
-        .findAllBookingsForUser(userId)
+        .findAllReservationsForUser(userId)
         .then(function (bookings) {
             res.json(bookings);
         }, function (err) {
@@ -45,7 +62,7 @@ function findAllBookingsForUser(req, res) {
 function findBookingById(req, res) {
     var bookingId = req.params.bookingId;
     bookingModel
-        .findBookingById(bookingId)
+        .findReservationById(bookingId)
         .then(function (booking) {
             res.json(booking);
         }, function (err) {
@@ -55,7 +72,7 @@ function findBookingById(req, res) {
 
 function findAllBookings(req, res) {
     bookingModel
-        .findAllBookings()
+        .findAllReservations()
         .then(function (bookings) {
             res.json(bookings);
         })
@@ -65,7 +82,7 @@ function updateBooking(req, res) {
     var newBooking = req.body;
     var bookingId = req.params.bookingId;
     bookingModel
-        .updateBooking(bookingId, newBooking)
+        .updateReservation(bookingId, newBooking)
         .then(function () {
             res.sendStatus(200);
         }, function (err) {
@@ -77,7 +94,7 @@ function deleteBooking(req, res) {
     var bookingId = req.params.bookingId;
 
     bookingModel
-        .deleteBooking(bookingId)
+        .deleteReservation(bookingId)
         .then(function () {
             res.sendStatus(200);
         }, function (err) {
@@ -86,8 +103,8 @@ function deleteBooking(req, res) {
 }
 
 function addFlight(req, res) {
-    var bookingId = req.params.bookingId;
-    var flightId = req.params.flightId;
+    var bookingId = req.body.bookingId;
+    var flightId = req.body.flightId;
 
     bookingModel
         .addFlight(bookingId, flightId)
@@ -99,13 +116,13 @@ function addFlight(req, res) {
 }
 
 function deleteFlight(req, res) {
-    var flightId = req.params.flightId;
-
-    bookingModel
-        .deleteFlight(flightId)
-        .then(function () {
-            res.sendStatus(200);
-        }, function (err) {
-            res.send(err);
-        });
+    // var flightId = req.params.flightId;
+    //
+    // bookingModel
+    //     .deleteFlight(flightId)
+    //     .then(function () {
+    //         res.sendStatus(200);
+    //     }, function (err) {
+    //         res.send(err);
+    //     });
 }

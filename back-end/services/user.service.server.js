@@ -1,67 +1,56 @@
-var app = require('../../express');
-var userModel = require('../models/user/user.model.server');
-var passport      = require('passport');
-var LocalStrategy = require('passport-local').Strategy;
-var bcrypt = require("bcrypt-nodejs");
+const app = require('../../express');
+const userModel = require('../models/user/user.model.server');
+const passport      = require('passport');
+const LocalStrategy = require('passport-local').Strategy;
 passport.use(new LocalStrategy(localStrategy));
 passport.serializeUser(serializeUser);
 passport.deserializeUser(deserializeUser);
 
-var FacebookStrategy = require('passport-facebook').Strategy;
-var facebookConfig = {
-    clientID     : process.env.FACEBOOK_CLIENT_ID,
-    clientSecret : process.env.FACEBOOK_CLIENT_SECRET,
-    callbackURL  : process.env.FACEBOOK_CALLBACK_URL,
-    profileFields: ['email']
-};
-passport.use(new FacebookStrategy(facebookConfig, facebookStrategy));
-
-var GoogleStrategy = require('passport-google-oauth').OAuth2Strategy;
-var googleConfig = {
-    clientID     : process.env.GOOGLE_CLIENT_ID,
-    clientSecret : process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL  : process.env.GOOGLE_CALLBACK_URL
-};
-passport.use(new GoogleStrategy(googleConfig, googleStrategy));
-
-
 app.get    ('/api/lufthansa/user/:userId', findUserById);
 app.get    ('/api/lufthansa/user', findUserByUsername);
 app.get    ('/api/lufthansa/users', isAdmin, findAllUsers);
+
 app.get    ('/api/lufthansa/crew', isAdmin, findAllCrew);
+app.get    ('/api/lufthansa/checkers', isAdmin, findAllTicketCheckers);
+
 app.get    ('/api/lufthansa/user', findUserByCredentials);
-app.post   ('/api/lufthansa/user', isAdmin, createUser);
+app.post   ('/api/lufthansa/user', createUser);
+
 app.delete ('/api/lufthansa/user/:userId', isAdmin, deleteUser);
 app.put    ('/api/lufthansa/user/:userId', updateUser); // to be protected
+
 app.post   ('/api/lufthansa/login', passport.authenticate('local'), login);
 app.post   ('/api/lufthansa/logout', logout);
 app.get    ('/api/lufthansa/loggedin', loggedin);
 app.get    ('/api/lufthansa/checkAdmin', checkAdmin);
 app.post   ('/api/lufthansa/register', register);
 app.post   ('/api/lufthansa/unregister', unregister);
+
 app.post   ('/api/lufthansa/user/:userId/schedule/:scheduleId', isAdmin, addSchedule);
 app.delete ('/api/lufthansa/schedule/:scheduleId', isAdmin, deleteSchedule);
+app.post   ('/api/lufthansa/user/findAllPassenger',findAllPassenger);
+app.post    ('/api/lufthansa/user/checkinPassenger', checkinPassenger);
 
-app.get ('/auth/facebook', passport.authenticate('facebook', { scope : 'email' }));
-app.get('/auth/facebook/callback',
-    passport.authenticate('facebook', {
-        successRedirect: '/project/index.html#!/profile',
-        failureRedirect: '/project/index.html#!/login'
-    }));
+app.post    ('/api/lufthansa/user/search', searchUsers);
 
-app.get('/auth/google', passport.authenticate('google', { scope : ['profile', 'email'] }));
-app.get('/auth/google/callback',
-    passport.authenticate('google', {
-        successRedirect: '/project/index.html#!/profile',
-        failureRedirect: '/project/index.html#!/login'
-    }));
 
+//
 function isAdmin(req, res, next) {
-    if(req.isAuthenticated() && req.user.roles.indexOf('ADMIN') > -1) {
+    if(req.isAuthenticated() && req.user.role === 'ADMIN') {
         next(); // continue to next middleware;
     } else {
         res.sendStatus(401);
     }
+}
+
+function searchUsers(req, res) {
+     let user = req.body;
+     userModel.find(user)
+         .then(function (user) {
+         res.json(user);
+     }, function (err) {
+         res.send(err);
+     });
 }
 
 function findAllUsers(req, res) {
@@ -69,6 +58,14 @@ function findAllUsers(req, res) {
         .findAllUsers()
         .then(function (users) {
             res.json(users);
+        })
+}
+
+function findAllTicketCheckers(req, res) {
+    userModel
+        .findAllTicketChecker()
+        .then(function (crew) {
+            res.json(crew);
         })
 }
 
@@ -85,12 +82,9 @@ function localStrategy(username, password, done) {
     userModel
         .findUserByCredentials(username, password)
         .then(
-            function(user) {
-                if(user && bcrypt.compareSync(password, user.password)) {
-                    done(null, user);
-                } else {
-                    done(null, false);
-                }
+            user =>{
+                console.log("findUserByCredentials");
+                done(null,user);
             },
             function(err) {
                 done(err, false);
@@ -116,7 +110,7 @@ function deserializeUser(user, done) {
 }
 
 function login(req, res) {
-    var user = req.user;
+    let user = req.user;
     res.json(user);
 }
 
@@ -126,16 +120,17 @@ function logout(req, res) {
 }
 
 function loggedin(req, res) {
+    console.log("req.isAuthenticated()",req.isAuthenticated());
     res.send(req.isAuthenticated() ? req.user : '0');
 }
 
 function checkAdmin(req, res) {
-    res.send(req.isAuthenticated() && req.user.roles.indexOf('ADMIN') > -1 ? req.user : '0');
+    res.send(req.isAuthenticated() && req.user.role === 'ADMIN' ? req.user : '0');
 }
 
 function register(req, res) {
-    var userObj = req.body;
-    userObj.password = bcrypt.hashSync(userObj.password);
+    let userObj = req.body;
+    console.log("userObj",userObj);
 
     userModel
         .createUser(userObj)
@@ -158,8 +153,7 @@ function unregister(req, res) {
 
 // all parameters send to req
 function findUserById (req, res) {
-    userId = req.params['userId'];
-
+    let userId = req.params['userId'];
     userModel
         .findUserById(userId)
         .then(function (user) {
@@ -184,6 +178,7 @@ function findUserByCredentials (req, res) {
 
 function createUser (req, res) {
     var user = req.body;
+    console.log(user);
     userModel
         .createUser(user)
         .then(function (user) {
@@ -194,8 +189,9 @@ function createUser (req, res) {
 }
 
 function updateUser (req, res) {
-    var newUser = req.body;
-    var userId = req.params.userId;
+    let newUser = req.body;
+    let userId = req.params.userId;
+    console.log("req.params.userId", userId);
 
     userModel
         .updateUser(userId, newUser)
@@ -207,7 +203,7 @@ function updateUser (req, res) {
 }
 
 function deleteUser (req, res) {
-    var userId = req.params.userId;
+    let userId = req.params.userId;
 
     userModel
         .deleteUser(userId)
@@ -255,76 +251,28 @@ function deleteSchedule (req, res) {
         });
 }
 
-function facebookStrategy(token, refreshToken, profile, done) {
+function findAllPassenger(req, res){
+    let passengerId = req.body;
     userModel
-        .findUserByFacebookId(profile.id)
+        .findAllPassenger(passengerId)
         .then(
-            function(user) {
-                if(user) {
-                    return done(null, user);
-                } else {
-                    var email = profile.emails[0].value;
-                    var emailParts = email.split("@");
-                    var newFacebookUser = {
-                        username:  emailParts[0],
-                        firstName: profile.name.givenName,
-                        lastName:  profile.name.familyName,
-                        email:     email,
-                        facebook: {
-                            id:    profile.id,
-                            token: token
-                        }
-                    };
-                    return userModel.createUser(newFacebookUser);
-                }
-            },
-            function(err) {
-                if (err) { return done(err); }
-            }
-        )
-        .then(
-            function(user){
-                return done(null, user);
-            },
-            function(err){
-                if (err) { return done(err); }
+           passengers =>{
+               res.json(passengers);
+           }, err => {
+               res.send(err)
             }
         );
 }
 
-function googleStrategy(token, refreshToken, profile, done) {
+
+function checkinPassenger(req, res){
+
+    let passengerId = req.body.passengerId;
     userModel
-        .findUserByGoogleId(profile.id)
+        .checkinPassenger(passengerId)
         .then(
-            function(user) {
-                if(user) {
-                    return done(null, user);
-                } else {
-                    var email = profile.emails[0].value;
-                    var emailParts = email.split("@");
-                    var newGoogleUser = {
-                        username:  emailParts[0],
-                        firstName: profile.name.givenName,
-                        lastName:  profile.name.familyName,
-                        email:     email,
-                        google: {
-                            id:    profile.id,
-                            token: token
-                        }
-                    };
-                    return userModel.createUser(newGoogleUser);
-                }
-            },
-            function(err) {
-                if (err) { return done(err); }
+            response => {res.json({msg: "success"});
             }
         )
-        .then(
-            function(user){
-                return done(null, user);
-            },
-            function(err){
-                if (err) { return done(err); }
-            }
-        );
 }
+
